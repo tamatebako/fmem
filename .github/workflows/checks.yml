@@ -1,0 +1,68 @@
+name: Checks
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [master, main]
+    paths-ignore:
+      - '**.md'
+      - 'ChangeLog'
+      - 'LICENSE'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'ChangeLog'
+      - 'LICENSE'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trailing-whitespace:
+    name: Trailing whitespace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for trailing whitespace
+        run: |
+          if git grep -nE '\s+$' -- ':!*.md'; then
+            echo '::error::Found trailing whitespace in the files above'
+            exit 1
+          fi
+          echo 'No trailing whitespace found'
+
+  line-endings:
+    name: CRLF line endings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for CRLF
+        run: |
+          if git grep -nIl $'\r$' -- ':!*.bat' ':!*.cmd'; then
+            echo '::error::Found CRLF line endings in the files above'
+            exit 1
+          fi
+          echo 'No CRLF line endings found'
+
+  cmake-config:
+    name: CMake configure sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get CMake
+        uses: lukka/get-cmake@latest
+      - name: Configure (no testing, no shared)
+        run: |
+          cmake -B build -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/tmp/install
+          cmake --build build
+          cmake --install build
+          test -f /tmp/install/lib/libfmem.a
+          test -f /tmp/install/include/fmem.h
+          test -f /tmp/install/lib/pkgconfig/fmem.pc
+          test -f /tmp/install/lib/cmake/fmem/fmemConfig.cmake

@@ -1,0 +1,16 @@
+* 0.1.0 (2026-07-24)
+
+  This is the first release under the tamatebako/fmem fork. It modernizes
+  the build system, adds GitHub Actions CI, and adds pkg-config / CMake
+  package config / vcpkg packaging.
+
+  Build and packaging:
+  - Modernized CMake build (minimum 3.16) with declared project version.
+  - Added pkg-config template (fmem.pc.in).
+  - Added CMake package config (fmemConfig.cmake) so downstream projects
+    can use find_package(fmem).
+  - Added vcpkg manifest and port overlay.
+  - Replaced legacy Travis CI and AppVeyor configs with GitHub Actions.
+
+  New features:
+  - None in this release; behavior is unchanged from Snaipe/fmem.

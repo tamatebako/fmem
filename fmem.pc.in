@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: fmem
+Description: Cross-platform library for opening memory-backed libc streams
+URL: https://github.com/tamatebako/fmem
+Version: @FMEM_VERSION@
+Cflags: -I${includedir}
+Libs: -L${libdir} -lfmem
