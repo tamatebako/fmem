@@ -103,7 +103,7 @@ jobs:
           # Build Criterion from source — the old ppa:snaipewastaken is gone.
           sudo apt-get update
           sudo apt-get install -y libgit2-dev libffi-dev
-          git clone --depth 1 --branch 2.4.2 https://github.com/Snaipe/Criterion.git /tmp/criterion
+          git clone --depth 1 --branch v2.4.3 https://github.com/Snaipe/Criterion.git /tmp/criterion
           cmake -S /tmp/criterion -B /tmp/criterion/build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -185,7 +185,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgit2-dev libffi-dev
-          git clone --depth 1 --branch 2.4.2 https://github.com/Snaipe/Criterion.git /tmp/criterion
+          git clone --depth 1 --branch v2.4.3 https://github.com/Snaipe/Criterion.git /tmp/criterion
           cmake -S /tmp/criterion -B /tmp/criterion/build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
           cmake --build /tmp/criterion/build
