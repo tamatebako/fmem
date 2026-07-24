@@ -100,15 +100,14 @@ jobs:
       - name: Install Criterion (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Build Criterion from source — the old ppa:snaipewastaken is gone.
+          # Criterion 2.4.x ships a meson.build (no CMakeLists.txt at root).
           sudo apt-get update
-          sudo apt-get install -y libgit2-dev libffi-dev
-          git clone --depth 1 --branch v2.4.3 https://github.com/Snaipe/Criterion.git /tmp/criterion
-          cmake -S /tmp/criterion -B /tmp/criterion/build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local
-          cmake --build /tmp/criterion/build
-          sudo cmake --install /tmp/criterion/build
+          sudo apt-get install -y libgit2-dev libffi-dev meson ninja-build
+          curl -L https://github.com/Snaipe/Criterion/archive/refs/tags/v2.4.3.tar.gz \
+            | tar -xz -C /tmp
+          meson setup /tmp/criterion-build /tmp/Criterion-2.4.3 --prefix=/usr/local -Dtests=false -Dsamples=false
+          ninja -C /tmp/criterion-build
+          sudo ninja -C /tmp/criterion-build install
           sudo ldconfig
 
       - name: Install Criterion (macOS)
@@ -184,12 +183,12 @@ jobs:
       - name: Install Criterion
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgit2-dev libffi-dev
-          git clone --depth 1 --branch v2.4.3 https://github.com/Snaipe/Criterion.git /tmp/criterion
-          cmake -S /tmp/criterion -B /tmp/criterion/build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
-          cmake --build /tmp/criterion/build
-          sudo cmake --install /tmp/criterion/build
+          sudo apt-get install -y libgit2-dev libffi-dev meson ninja-build
+          curl -L https://github.com/Snaipe/Criterion/archive/refs/tags/v2.4.3.tar.gz \
+            | tar -xz -C /tmp
+          meson setup /tmp/criterion-build /tmp/Criterion-2.4.3 --prefix=/usr/local -Dtests=false -Dsamples=false
+          ninja -C /tmp/criterion-build
+          sudo ninja -C /tmp/criterion-build install
           sudo ldconfig
       - name: Configure
         env:
