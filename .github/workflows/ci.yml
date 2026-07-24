@@ -1,0 +1,210 @@
+name: CI
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    branches: [master, main]
+    paths-ignore:
+      - '**.md'
+      - 'ChangeLog'
+      - 'LICENSE'
+      - 'VERSION'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'ChangeLog'
+      - 'LICENSE'
+      - 'VERSION'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x64
+          - name: Linux x64 gcc
+            os: ubuntu-24.04
+            cc: gcc
+            cxx: g++
+          - name: Linux x64 clang
+            os: ubuntu-24.04
+            cc: clang
+            cxx: clang++
+          # Linux ARM64
+          - name: Linux ARM64 gcc
+            os: ubuntu-24.04-arm
+            cc: gcc
+            cxx: g++
+          - name: Linux ARM64 clang
+            os: ubuntu-24.04-arm
+            cc: clang
+            cxx: clang++
+          # macOS
+          - name: macOS Intel
+            os: macos-13
+            cc: clang
+            cxx: clang++
+          - name: macOS ARM64
+            os: macos-14
+            cc: clang
+            cxx: clang++
+          # Windows MSVC
+          - name: Windows x64 MSVC
+            os: windows-2022
+            cc: cl
+            cxx: cl
+            msvc: true
+          # Windows MinGW
+          - name: Windows x64 MinGW
+            os: windows-2022
+            cc: gcc
+            cxx: g++
+            mingw: MINGW64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Setup MSVC
+        if: runner.os == 'Windows' && matrix.msvc
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Setup MSYS2 (MinGW)
+        if: runner.os == 'Windows' && matrix.mingw != ''
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.mingw }}
+          update: true
+          install: >-
+            cmake
+            ninja
+            make
+            mingw-w64-x86_64-gcc
+
+      - name: Install Criterion (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Build Criterion from source — the old ppa:snaipewastaken is gone.
+          sudo apt-get update
+          sudo apt-get install -y libgit2-dev libffi-dev
+          git clone --depth 1 --branch 2.4.2 https://github.com/Snaipe/Criterion.git /tmp/criterion
+          cmake -S /tmp/criterion -B /tmp/criterion/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake --build /tmp/criterion/build
+          sudo cmake --install /tmp/criterion/build
+          sudo ldconfig
+
+      - name: Install Criterion (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install criterion meson
+
+      - name: Configure (Linux/macOS)
+        if: runner.os != 'Windows'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON
+
+      - name: Build (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: cmake --build build
+
+      - name: Test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Install (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: cmake --install build --prefix $PWD/install
+
+      - name: Configure (Windows MSVC)
+        if: runner.os == 'Windows' && matrix.msvc
+        run: |
+          cmake -B build -G "Ninja Multi-Config" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_TESTING=OFF
+
+      - name: Build (Windows MSVC)
+        if: runner.os == 'Windows' && matrix.msvc
+        run: cmake --build build --config Release
+
+      - name: Install (Windows MSVC)
+        if: runner.os == 'Windows' && matrix.msvc
+        run: cmake --install build --config Release --prefix $PWD/install
+
+      - name: Configure (Windows MinGW)
+        if: runner.os == 'Windows' && matrix.mingw != ''
+        shell: msys2 {0}
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF
+
+      - name: Build (Windows MinGW)
+        if: runner.os == 'Windows' && matrix.mingw != ''
+        shell: msys2 {0}
+        run: cmake --build build
+
+      - name: Install (Windows MinGW)
+        if: runner.os == 'Windows' && matrix.mingw != ''
+        shell: msys2 {0}
+        run: cmake --install build --prefix $PWD/install
+
+  build-static:
+    name: Static lib (sanitizers)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get CMake and Ninja
+        uses: lukka/get-cmake@latest
+      - name: Install Criterion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgit2-dev libffi-dev
+          git clone --depth 1 --branch 2.4.2 https://github.com/Snaipe/Criterion.git /tmp/criterion
+          cmake -S /tmp/criterion -B /tmp/criterion/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake --build /tmp/criterion/build
+          sudo cmake --install /tmp/criterion/build
+          sudo ldconfig
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all"
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:abort_on_error=1
+        run: ctest --test-dir build --output-on-failure
