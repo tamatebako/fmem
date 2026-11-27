@@ -52,11 +52,11 @@ jobs:
             cxx: clang++
           # macOS
           - name: macOS Intel
-            os: macos-13
+            os: macos-15-intel
             cc: clang
             cxx: clang++
           - name: macOS ARM64
-            os: macos-14
+            os: macos-15
             cc: clang
             cxx: clang++
           # Windows MSVC
